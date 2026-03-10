@@ -1,0 +1,50 @@
+# Build artifacts
+/build/
+/CMakeFiles/
+/CMakeCache.txt
+Makefile
+cmake_install.cmake
+/*/CMakeFiles/
+/*/CMakeCache.txt
+/*/Makefile
+
+# Generated binaries
+/bin/
+/*.exe
+/*.out
+/*.app
+
+# Qt generated files
+*.moc
+*.obj
+*.o
+*.lo
+*.la
+*.lai
+*.log
+*.vcxproj*
+*.user
+
+# IDE and editor files
+*.swp
+*.swo
+*.DS_Store
+.vscode/
+.idea/
+
+# Documentation
+*.md
+
+# JSON cache or temporary
+*.tmp
+
+# Python virtual envs
+venv/
+
+# Third-party
+/deps/
+
+# Misc
+*.bak
+*.orig
+*~

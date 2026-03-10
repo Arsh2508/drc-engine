@@ -1,0 +1,226 @@
+{
+  "layers": {
+    "polysilicon": {
+      "minWidth": 100.0,
+      "minHeight": 100.0,
+      "minArea": 4000.0
+    },
+    "metal1": {
+      "minWidth": 150.0,
+      "minHeight": 150.0,
+      "minArea": 12000.0
+    },
+    "metal2": {
+      "minWidth": 200.0,
+      "minHeight": 200.0,
+      "minArea": 20000.0
+    },
+    "contact": {
+      "minWidth": 50.0,
+      "minHeight": 50.0,
+      "minArea": 1000.0
+    },
+    "via": {
+      "minWidth": 80.0,
+      "minHeight": 80.0,
+      "minArea": 3200.0
+    }
+  },
+
+  "rules": {
+    "enclosure": [
+      {
+        "inner": "polysilicon",
+        "outer": "metal1",
+        "margin": 50.0
+      },
+      {
+        "inner": "contact",
+        "outer": "metal1",
+        "margin": 30.0
+      },
+      {
+        "inner": "via",
+        "outer": "metal2",
+        "margin": 40.0
+      }
+    ],
+    "containment": [
+      {
+        "layerA": "polysilicon",
+        "layerB": "metal1"
+      },
+      {
+        "layerA": "contact",
+        "layerB": "metal1"
+      },
+      {
+        "layerA": "via",
+        "layerB": "metal2"
+      }
+    ]
+  },
+
+  "shapes": [
+    {
+      "id": 1,
+      "layer": "polysilicon",
+      "rect": {
+        "x1": 0,
+        "y1": 0,
+        "x2": 80,
+        "y2": 80
+      }
+    },
+    {
+      "id": 2,
+      "layer": "polysilicon",
+      "rect": {
+        "x1": 160,
+        "y1": 0,
+        "x2": 240,
+        "y2": 80
+      }
+    },
+    {
+      "id": 3,
+      "layer": "polysilicon",
+      "rect": {
+        "x1": 0,
+        "y1": 160,
+        "x2": 120,
+        "y2": 240
+      }
+    },
+    {
+      "id": 100,
+      "layer": "metal1",
+      "rect": {
+        "x1": -100,
+        "y1": -100,
+        "x2": 200,
+        "y2": 200
+      }
+    },
+    {
+      "id": 101,
+      "layer": "metal1",
+      "rect": {
+        "x1": 250,
+        "y1": 50,
+        "x2": 400,
+        "y2": 150
+      }
+    },
+    {
+      "id": 102,
+      "layer": "metal1",
+      "rect": {
+        "x1": 100,
+        "y1": 280,
+        "x2": 320,
+        "y2": 380
+      }
+    },
+    {
+      "id": 200,
+      "layer": "metal2",
+      "rect": {
+        "x1": 0,
+        "y1": 0,
+        "x2": 300,
+        "y2": 100
+      }
+    },
+    {
+      "id": 201,
+      "layer": "metal2",
+      "rect": {
+        "x1": 0,
+        "y1": 120,
+        "x2": 300,
+        "y2": 240
+      }
+    },
+    {
+      "id": 202,
+      "layer": "metal2",
+      "rect": {
+        "x1": 320,
+        "y1": 50,
+        "x2": 500,
+        "y2": 200
+      }
+    },
+    {
+      "id": 300,
+      "layer": "contact",
+      "rect": {
+        "x1": 30,
+        "y1": 30,
+        "x2": 70,
+        "y2": 70
+      }
+    },
+    {
+      "id": 301,
+      "layer": "contact",
+      "rect": {
+        "x1": 190,
+        "y1": 140,
+        "x2": 220,
+        "y2": 170
+      }
+    },
+    {
+      "id": 302,
+      "layer": "contact",
+      "rect": {
+        "x1": 180,
+        "y1": 30,
+        "x2": 210,
+        "y2": 60
+      }
+    },
+    {
+      "id": 400,
+      "layer": "via",
+      "rect": {
+        "x1": 50,
+        "y1": 30,
+        "x2": 110,
+        "y2": 90
+      }
+    },
+    {
+      "id": 401,
+      "layer": "via",
+      "rect": {
+        "x1": 200,
+        "y1": 150,
+        "x2": 260,
+        "y2": 210
+      }
+    },
+    {
+      "id": 5,
+      "layer": "polysilicon",
+      "rect": {
+        "x1": 320,
+        "y1": 50,
+        "x2": 360,
+        "y2": 70
+      }
+    },
+    {
+      "id": 6,
+      "layer": "metal1",
+      "rect": {
+        "x1": 500,
+        "y1": 0,
+        "x2": 520,
+        "y2": 100
+      }
+    }
+  ]
+}
