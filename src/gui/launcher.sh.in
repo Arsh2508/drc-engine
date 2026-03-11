@@ -1,0 +1,19 @@
+#!/bin/sh
+# launcher wrapper to avoid Snap libraries and other inherited variables
+# clear dynamic loader overrides
+unset LD_LIBRARY_PATH
+unset LD_PRELOAD
+
+# remove any snap/gtk/qt variables that might point into /snap
+unset GTK_PATH GTK_EXE_PREFIX GTK_MODULES GTK2_RC_FILES GDK_BACKEND GIO_MODULE_DIR
+unset QT_PLUGIN_PATH QT_QPA_PLATFORM_PLUGIN_PATH QT_ACCESSIBILITY
+# also unset generic SNAP variables
+for v in $(env | grep -E '^(SNAP|XDG_CONFIG_DIRS_VSCODE_|GSETTINGS_SCHEMA_DIR_VSCODE_|GIO_MODULE_DIR_VSCODE_|GTK_PATH_VSCODE_|GTK_IM_MODULE_FILE_VSCODE_)' | cut -d= -f1); do
+    unset "$v"
+done
+
+# ensure Qt uses system plugin directory explicitly
+export QT_QPA_PLATFORM_PLUGIN_PATH=/usr/lib/x86_64-linux-gnu/qt5/plugins/platforms
+
+# execute the real binary located next to this script
+exec "$(dirname "$0")/cli_drc_gui.real" "$@"

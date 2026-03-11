@@ -32,9 +32,6 @@ cmake_install.cmake
 .vscode/
 .idea/
 
-# Documentation
-*.md
-
 # JSON cache or temporary
 *.tmp
 
