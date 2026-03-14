@@ -39,64 +39,27 @@ public:
 
     /// @brief Insert a shape into the vector.
     /// @param shape Shape to insert
-    void insert(const Shape& shape) override
-    {
-        m_shapes.push_back(shape);
-    }
+    void insert(const Shape& shape) override;
 
     /// @brief Query for shapes overlapping the rectangle using brute-force.
     /// @param queryRect Rectangle to query
     /// @return Vector of shapes overlapping queryRect
-    std::vector<Shape> query(const Rect& queryRect) const override
-    {
-        std::vector<Shape> results;
-
-        // Brute-force: check every shape
-        for (const auto& shape : m_shapes)
-        {
-            if (GeometryUtils::rectsOverlap(queryRect, shape.getBounds()))
-            {
-                results.push_back(shape);
-            }
-        }
-
-        return results;
-    }
+    std::vector<Shape> query(const Rect& queryRect) const override;
 
     /// @brief Get all indexed shapes.
     /// @return All shapes in the index
-    std::vector<Shape> getAllShapes() const override
-    {
-        return m_shapes;
-    }
+    std::vector<Shape> getAllShapes() const override;
 
     /// @brief Get shape count.
     /// @return Number of shapes in index
-    size_t getShapeCount() const override
-    {
-        return m_shapes.size();
-    }
+    size_t getShapeCount() const override;
 
     /// @brief Clear the index.
-    void clear() override
-    {
-        m_shapes.clear();
-    }
+    void clear() override;
 
     /// @brief Get bounding box of all indexed shapes.
     /// @return Bounding rectangle encompassing all shapes
-    Rect getBounds() const override
-    {
-        if (m_shapes.empty())
-            return Rect();
-
-        Rect bounds = m_shapes[0].getBounds();
-        for (size_t i = 1; i < m_shapes.size(); ++i)
-        {
-            bounds = GeometryUtils::getUnion(bounds, m_shapes[i].getBounds());
-        }
-        return bounds;
-    }
+    Rect getBounds() const override;
 
 private:
     std::vector<Shape> m_shapes; ///< All shapes stored linearly

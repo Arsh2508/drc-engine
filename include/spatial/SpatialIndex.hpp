@@ -51,13 +51,7 @@ public:
     /// Default implementation calls insert() for each shape.
     /// Subclasses may override for batch optimization (e.g., bulk-loading in R-trees).
     /// @param shapes Vector of shapes to insert
-    virtual void insertBatch(const std::vector<Shape>& shapes)
-    {
-        for (const auto& shape : shapes)
-        {
-            insert(shape);
-        }
-    }
+    virtual void insertBatch(const std::vector<Shape>& shapes);
 
     /// @brief Query for all shapes that overlap the given rectangle.
     /// Time complexity: O(n) for naive, O(log n + k) for R-tree (k = results)

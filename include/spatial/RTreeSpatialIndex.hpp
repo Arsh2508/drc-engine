@@ -24,68 +24,17 @@ public:
 
     RTreeSpatialIndex() = default;
 
-    void insert(const Shape& shape) override
-    {
-        BoostBox box = rectToBoostBox(shape.getBounds());
-        // debug: log inserted shape details to help verify index contents
-        std::cout << "[RTree] inserting shape id=" << shape.getId()
-                  << " layer=" << shape.getLayer()
-                  << " bounds=(" << shape.getBounds().min.x << "," << shape.getBounds().min.y
-                  << ")-((" << shape.getBounds().max.x << "," << shape.getBounds().max.y << "))\n";
-        m_rtree.insert(std::make_pair(box, &shape));
-    }
+    void insert(const Shape& shape) override;
 
-    std::vector<Shape> query(const Rect& queryRect) const override
-    {
-        BoostBox qbox = rectToBoostBox(queryRect);
-        std::vector<Value> results;
-        m_rtree.query(bgi::intersects(qbox), std::back_inserter(results));
+    std::vector<Shape> query(const Rect& queryRect) const override;
 
-        // debug: log number of candidates returned for this query rectangle
-        std::cout << "[RTree] query rect=(" << queryRect.min.x << "," << queryRect.min.y
-                  << ")-(" << queryRect.max.x << "," << queryRect.max.y << ")";
-        std::cout << " returned " << results.size() << " candidate(s)\n";
+    std::vector<Shape> getAllShapes() const override;
 
-        std::vector<Shape> out;
-        out.reserve(results.size());
-        for (const auto& v : results)
-        {
-            if (v.second)
-                out.push_back(*v.second);
-        }
-        return out;
-    }
+    size_t getShapeCount() const override;
 
-    std::vector<Shape> getAllShapes() const override
-    {
-        std::vector<Shape> out;
-        out.reserve(m_rtree.size());
-        for (const auto& v : m_rtree)
-        {
-            if (v.second)
-                out.push_back(*v.second);
-        }
-        return out;
-    }
+    void clear() override;
 
-    size_t getShapeCount() const override { return m_rtree.size(); }
-
-    void clear() override { m_rtree.clear(); }
-
-    Rect getBounds() const override
-    {
-        if (m_rtree.empty())
-            return Rect();
-
-        auto it = m_rtree.begin();
-        Rect bounds = boostBoxToRect(it->first);
-        ++it;
-        for (; it != m_rtree.end(); ++it)
-        {
-            bounds = GeometryUtils::getUnion(bounds, boostBoxToRect(it->first));
-        }
-        return bounds;
-    }
+    Rect getBounds() const override;
 
 private:
     RTree m_rtree;

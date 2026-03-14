@@ -33,10 +33,8 @@ public:
     {
     }
 
-    /// @brief Get the layout being checked.
     const Layout& getLayout() const { return m_layout; }
 
-    /// @brief Get the spatial index for queries.
     const SpatialIndex& getSpatialIndex() const { return *m_spatialIndex; }
 
     /// @brief Get mutable spatial index reference (for internal engine use).
@@ -50,5 +48,4 @@ private:
     SpatialIndexPtr m_spatialIndex; ///< Spatial index for queries (owned)
 };
 
-/// @brief Shared pointer for DRC context.
 using DrcContextPtr = std::shared_ptr<DrcContext>;

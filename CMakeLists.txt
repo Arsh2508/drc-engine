@@ -20,13 +20,25 @@ FetchContent_Declare(json
 )
 FetchContent_MakeAvailable(json)
 
-# header-only interface library representing the engine
-add_library(drc_engine INTERFACE)
-target_include_directories(drc_engine INTERFACE
+# ---- engine library ----
+# Previously this project was header-only; now we build a standard compiled library
+# from src/<module>/*.cpp while keeping public headers in include/.
+file(GLOB_RECURSE DRC_ENGINE_SOURCES CONFIGURE_DEPENDS
+    "${CMAKE_SOURCE_DIR}/src/core/*.cpp"
+    "${CMAKE_SOURCE_DIR}/src/drc/*.cpp"
+    "${CMAKE_SOURCE_DIR}/src/geometry/*.cpp"
+    "${CMAKE_SOURCE_DIR}/src/io/*.cpp"
+    "${CMAKE_SOURCE_DIR}/src/layout/*.cpp"
+    "${CMAKE_SOURCE_DIR}/src/rules/*.cpp"
+    "${CMAKE_SOURCE_DIR}/src/spatial/*.cpp"
+)
+
+add_library(drc_engine STATIC ${DRC_ENGINE_SOURCES})
+target_include_directories(drc_engine PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
 )
-target_link_libraries(drc_engine INTERFACE nlohmann_json::nlohmann_json)
+target_link_libraries(drc_engine PUBLIC nlohmann_json::nlohmann_json)
 
 # ---- CLI executables ----
 add_executable(cli_drc src/app/main.cpp)

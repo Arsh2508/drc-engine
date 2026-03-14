@@ -2,6 +2,7 @@
 #include <core/DrcEngine.hpp>
 #include <spatial/RTreeSpatialIndex.hpp>
 // include rules used directly in additional tests
+#include <rules/EnclosureRule.hpp>
 #include <rules/IntersectionRule.hpp>
 #include <rules/MinSpacingRule.hpp>
 #include <cassert>
