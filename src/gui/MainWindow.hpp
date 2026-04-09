@@ -5,6 +5,7 @@
 #include <QLabel>
 #include <QToolBar>
 #include <memory>
+#include <vector>
 
 #include "GraphicsView.hpp"
 #include "LayoutScene.hpp"
@@ -12,6 +13,7 @@
 #include <io/JsonLayoutLoader.hpp>
 #include <core/DrcEngine.hpp>
 #include <drc/DrcReport.hpp>
+#include <drc/DrcRule.hpp>
 
 // MainWindow provides minimal UI to load a JSON layout, run DRC, and visualize results.
 // Interaction with DRC core is done through headers only; no Qt types leak into core.

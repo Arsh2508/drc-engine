@@ -1,6 +1,5 @@
 #include "MainWindow.hpp"
 
-#include <QMenuBar>
 #include <QFileDialog>
 #include <QDockWidget>
 #include <QMessageBox>
@@ -50,14 +49,6 @@ MainWindow::MainWindow(QWidget* parent)
 
 void MainWindow::buildMenu()
 {
-    QMenu* fileMenu = menuBar()->addMenu("File");
-    QAction* openAct = fileMenu->addAction("Open Layout...");
-    connect(openAct, &QAction::triggered, this, &MainWindow::onOpenLayout);
-
-    QMenu* runMenu = menuBar()->addMenu("Run");
-    QAction* runAct = runMenu->addAction("Execute DRC");
-    connect(runAct, &QAction::triggered, this, &MainWindow::onRunDrc);
-
     // Toolbar
     m_toolbar = addToolBar("Main");
     QAction* tbOpen = m_toolbar->addAction("Open");

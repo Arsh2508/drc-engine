@@ -25,9 +25,6 @@
 class DrcContext
 {
 public:
-    /// @brief Construct DRC context with layout and spatial index.
-    /// @param layout Reference to the layout being checked (non-owning)
-    /// @param spatialIndex Shared pointer to spatial index (owned)
     DrcContext(const Layout& layout, SpatialIndexPtr spatialIndex)
         : m_layout(layout), m_spatialIndex(spatialIndex)
     {
@@ -40,7 +37,6 @@ public:
     /// @brief Get mutable spatial index reference (for internal engine use).
     SpatialIndex& getSpatialIndexMutable() { return *m_spatialIndex; }
 
-    /// @brief Get the spatial index shared pointer (rarely needed).
     SpatialIndexPtr getSpatialIndexPtr() const { return m_spatialIndex; }
 
 private:

@@ -3,7 +3,6 @@
 #include <drc/DrcRule.hpp>
 #include <string>
 
-// No intersection rule for same-layer shapes
 class IntersectionRule : public DrcRule
 {
 public:
