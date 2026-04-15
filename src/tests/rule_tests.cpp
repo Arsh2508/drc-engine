@@ -11,7 +11,7 @@
 int main()
 {
     JsonLayoutLoader loader;
-    auto pair = loader.loadWithRules("examples/layout_complex_with_rules.json");
+    auto pair = loader.loadWithRules("../examples/layout_complex_with_rules.json");
     auto layout = pair.first;
     auto rules = pair.second;
 
@@ -71,6 +71,83 @@ int main()
         assert(rep3.getViolationCount() == 1);
         auto msg2 = rep3.getViolations()[0].getMessage();
         assert(msg2.find("containing") != std::string::npos);
+    }
+
+    // Additional enclosure tests
+    {
+        // Test proper enclosure with sufficient margin
+        Layout l1;
+        Layer in1(0, "inner");
+        Layer out1(1, "outer");
+        in1.addShape(Shape(Rect(10,10,20,20), 1, 0));  // inner
+        out1.addShape(Shape(Rect(0,0,30,30), 2, 1));   // outer with margin 10 on all sides
+        l1.addLayer(in1);
+        l1.addLayer(out1);
+        DrcEngine e1;
+        e1.registerRule(std::make_shared<EnclosureRule>("inner","outer",5.0));
+        auto rep1 = e1.run(l1);
+        assert(rep1.getViolationCount() == 0);  // should pass
+    }
+    {
+        // Test standalone outer shape with no inner shapes
+        Layout l0;
+        Layer in0(0, "inner");
+        Layer out0(1, "outer");
+        l0.addLayer(in0);
+        out0.addShape(Shape(Rect(0,0,20,20), 2, 1)); // standalone outer
+        l0.addLayer(out0);
+        DrcEngine e0;
+        e0.registerRule(std::make_shared<EnclosureRule>("inner","outer",5.0));
+        auto rep0 = e0.run(l0);
+        assert(rep0.getViolationCount() == 0);  // no inner shapes means no violations
+    }
+    {
+        // Test touching boundary (zero margin)
+        Layout l2;
+        Layer in2(0, "inner");
+        Layer out2(1, "outer");
+        in2.addShape(Shape(Rect(0,0,10,10), 1, 0));  // inner
+        out2.addShape(Shape(Rect(0,0,10,10), 2, 1)); // outer touches inner (same rect)
+        l2.addLayer(in2);
+        l2.addLayer(out2);
+        DrcEngine e2;
+        e2.registerRule(std::make_shared<EnclosureRule>("inner","outer",5.0));
+        auto rep2 = e2.run(l2);
+        assert(rep2.getViolationCount() == 1);
+        auto msg2 = rep2.getViolations()[0].getMessage();
+        assert(msg2.find("margin") != std::string::npos);
+    }
+    {
+        // Test insufficient margin on one side
+        Layout l3;
+        Layer in3(0, "inner");
+        Layer out3(1, "outer");
+        in3.addShape(Shape(Rect(4,10,14,20), 1, 0));  // inner starts at x=4
+        out3.addShape(Shape(Rect(0,0,20,30), 2, 1));  // outer starts at x=0, left margin=4 < 5
+        l3.addLayer(in3);
+        l3.addLayer(out3);
+        DrcEngine e3;
+        e3.registerRule(std::make_shared<EnclosureRule>("inner","outer",5.0));
+        auto rep3 = e3.run(l3);
+        assert(rep3.getViolationCount() == 1);
+        auto msg3 = rep3.getViolations()[0].getMessage();
+        assert(msg3.find("margin") != std::string::npos);
+    }
+    {
+        // Test no containing outer shape
+        Layout l4;
+        Layer in4(0, "inner");
+        Layer out4(1, "outer");
+        in4.addShape(Shape(Rect(0,0,10,10), 1, 0));  // inner
+        out4.addShape(Shape(Rect(20,20,30,30), 2, 1)); // outer far away, doesn't contain
+        l4.addLayer(in4);
+        l4.addLayer(out4);
+        DrcEngine e4;
+        e4.registerRule(std::make_shared<EnclosureRule>("inner","outer",5.0));
+        auto rep4 = e4.run(l4);
+        assert(rep4.getViolationCount() == 1);
+        auto msg4 = rep4.getViolations()[0].getMessage();
+        assert(msg4.find("containing") != std::string::npos);
     }
 
     // basic R-tree sanity check
@@ -145,7 +222,7 @@ int main()
     }
 
     // also test simple JSON that lacks rules should produce minimal rules
-    auto simplePair = loader.loadWithRules("examples/layout_complex.json");
+    auto simplePair = loader.loadWithRules("../examples/layout_complex.json");
     DrcEngine engine2;
     engine2.registerRules(simplePair.second);
     auto report2 = engine2.run(*simplePair.first);
@@ -153,9 +230,23 @@ int main()
     // only min-width/area rules exist but no config -> no violations expected
     assert(report2.getViolationCount() == 0);
 
+    // verify trapezoid and polygon JSON loads correctly
+    {
+        auto polygonLayout = loader.load("../examples/trapezoid_and_polygon.json");
+        assert(polygonLayout->getLayerCount() == 2);
+        int metalId = polygonLayout->getLayerIdByName("metal1");
+        assert(metalId >= 0);
+        const Layer* metal = polygonLayout->getLayer(metalId);
+        assert(metal && metal->getShapeCount() == 2);
+        const Shape& trapezoid = metal->getShapes()[1];
+        assert(trapezoid.getType() == ShapeType::Trapezoid);
+        assert(trapezoid.getPoints().size() == 4);
+        assert(trapezoid.getArea() > 0);
+    }
+
     // verify spacing rules are parsed from JSON example
     {
-        auto pair = loader.loadWithRules("examples/basic_spacing_violations.json");
+        auto pair = loader.loadWithRules("../examples/basic_spacing_violations.json");
         DrcEngine e4;
         e4.registerRules(pair.second);
         // ensure at least one MinSpacingRule was created

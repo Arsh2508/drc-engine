@@ -60,9 +60,28 @@ std::vector<DrcViolation> MinSpacingRule::check(const DrcContext& context) const
                 continue;
 
             // Calculate distance
-            spatial::BoostBox box1 = spatial::rectToBoostBox(bounds1);
-            spatial::BoostBox box2 = spatial::rectToBoostBox(bounds2);
-            double distance = spatial::bg::distance(box1, box2);
+            double distance = 0.0;
+            if (shape1.hasPoints() || shape2.hasPoints())
+            {
+                // Get points for shape1
+                std::vector<Point> points1 = shape1.hasPoints() ? shape1.getPoints() :
+                    std::vector<Point>{{bounds1.min.x, bounds1.min.y}, {bounds1.max.x, bounds1.min.y},
+                                      {bounds1.max.x, bounds1.max.y}, {bounds1.min.x, bounds1.max.y}};
+
+                // Get points for shape2
+                std::vector<Point> points2 = shape2.hasPoints() ? shape2.getPoints() :
+                    std::vector<Point>{{bounds2.min.x, bounds2.min.y}, {bounds2.max.x, bounds2.min.y},
+                                      {bounds2.max.x, bounds2.max.y}, {bounds2.min.x, bounds2.max.y}};
+
+                distance = GeometryUtils::polygonDistance(points1, points2);
+            }
+            else
+            {
+                // Use bounding box distance for rectangles
+                spatial::BoostBox box1 = spatial::rectToBoostBox(bounds1);
+                spatial::BoostBox box2 = spatial::rectToBoostBox(bounds2);
+                distance = spatial::bg::distance(box1, box2);
+            }
 
             // Check for violation
             bool violation = (distance < m_minSpacing - 1e-9);

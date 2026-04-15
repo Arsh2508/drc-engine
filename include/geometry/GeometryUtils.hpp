@@ -4,6 +4,9 @@
 #include "Rect.hpp"
 #include <algorithm>
 #include <cmath>
+#include <vector>
+#include <layout/Polygon.hpp>
+#include <spatial/BoostGeometryAdapters.hpp>
 
 namespace GeometryUtils
 {
@@ -73,6 +76,33 @@ inline bool contains(const Rect& container, const Rect& contained)
            container.min.y <= contained.min.y &&
            container.max.x >= contained.max.x &&
            container.max.y >= contained.max.y;
+}
+
+// Polygon geometry functions
+
+// Check if two polygons intersect (including touching edges)
+inline bool polygonsIntersect(const std::vector<Point>& poly1, const std::vector<Point>& poly2)
+{
+    return spatial::polygonsIntersect(poly1, poly2);
+}
+
+// Calculate minimum distance between two polygons
+inline double polygonDistance(const std::vector<Point>& poly1, const std::vector<Point>& poly2)
+{
+    return spatial::polygonsDistance(poly1, poly2);
+}
+
+// Calculate minimum width and height of a polygon
+inline std::pair<double, double> polygonMinDimensions(const std::vector<Point>& points)
+{
+    if (points.empty())
+        return {0.0, 0.0};
+
+    // For polygons, min width/height is the minimum span in any direction
+    // For simplicity, we'll use the bounding box dimensions
+    // TODO: Implement proper minimum width calculation for polygons
+    Rect bbox = boundingRectForPoints(points);
+    return {static_cast<double>(bbox.width()), static_cast<double>(bbox.height())};
 }
 
 } // namespace GeometryUtils

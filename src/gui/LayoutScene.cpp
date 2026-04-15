@@ -1,5 +1,6 @@
 #include "LayoutScene.hpp"
 #include <QGraphicsRectItem>
+#include <QGraphicsPolygonItem>
 #include <QBrush>
 #include <QPen>
 #include <QColor>
@@ -9,6 +10,67 @@
 
 #include <QVariant>
 #include <cmath>
+
+static QPolygonF pointsToPolygon(const std::vector<Point>& points)
+{
+    QPolygonF polygon;
+    polygon.reserve(static_cast<int>(points.size()));
+    for (const auto& point : points)
+    {
+        polygon << QPointF(point.x, point.y);
+    }
+    return polygon;
+}
+
+static QAbstractGraphicsShapeItem* asShapeItem(QGraphicsItem* item)
+{
+    return dynamic_cast<QAbstractGraphicsShapeItem*>(item);
+}
+
+static bool itemMatchesShapeType(QGraphicsItem* item, const Shape& shape)
+{
+    if (shape.hasPoints())
+        return dynamic_cast<QGraphicsPolygonItem*>(item) != nullptr;
+    return dynamic_cast<QGraphicsRectItem*>(item) != nullptr;
+}
+
+static QGraphicsItem* createShapeGraphicsItem(LayoutScene* scene,
+                                              const Shape& shape,
+                                              const Layer& layer,
+                                              const QColor& baseColor)
+{
+    QGraphicsItem* item = nullptr;
+    if (shape.hasPoints())
+    {
+        auto* polygonItem = scene->addPolygon(pointsToPolygon(shape.getPoints()));
+        item = polygonItem;
+    }
+    else
+    {
+        const Rect& bounds = shape.getBounds();
+        QRectF sceneRect(bounds.min.x, bounds.min.y, bounds.width(), bounds.height());
+        auto* rectItem = scene->addRect(sceneRect);
+        item = rectItem;
+    }
+
+    if (auto* shapeItem = asShapeItem(item))
+    {
+        int var = shape.getId() % 12;
+        QColor fill = baseColor;
+        int h, s, v; fill.getHsv(&h, &s, &v);
+        v = std::max(18, std::min(255, v - var));
+        fill.setHsv(h, s, v);
+        shapeItem->setBrush(QBrush(fill));
+        QPen pen(fill.darker(140)); pen.setWidth(1);
+        shapeItem->setPen(pen);
+        shapeItem->setOpacity(1.0);
+    }
+
+    item->setData(1, QString::fromStdString(layer.getName()));
+    item->setData(0, shape.getId());
+    item->setZValue(static_cast<qreal>(layer.getId()));
+    return item;
+}
 
 LayoutScene::LayoutScene(QObject* parent)
     : QGraphicsScene(parent)
@@ -42,50 +104,61 @@ void LayoutScene::loadLayout(const std::shared_ptr<Layout>& layout)
         {
             for (const auto& shape : layer.getShapes())
             {
-                const Rect& bounds = shape.getBounds();
-                QRectF sceneRect(bounds.min.x, bounds.min.y, bounds.width(), bounds.height());
                 int sid = shape.getId();
                 seenIds.insert(sid);
 
                 auto it = m_shapeItems.find(sid);
-                if (it != m_shapeItems.end() && it->second)
+                if (it != m_shapeItems.end() && it->second && itemMatchesShapeType(it->second, shape))
                 {
-                    // Update existing item geometry and reset style
-                    it->second->setRect(sceneRect);
-                    // store layer name for styling
-                    it->second->setData(1, QString::fromStdString(layer.getName()));
-                    it->second->setData(0, sid);
-                    it->second->setZValue(static_cast<qreal>(layerId));
-                    // Apply per-layer style
-                    QString lname = it->second->data(1).toString();
-                    QColor c = colorForLayerName(lname.toStdString());
-                    QBrush b(c);
-                    it->second->setBrush(b);
-                    QPen pen(c.darker(140)); pen.setWidth(1);
-                    it->second->setPen(pen);
-                    it->second->setOpacity(1.0);
+                    QGraphicsItem* item = it->second;
+                    if (shape.hasPoints())
+                    {
+                        auto* polygonItem = dynamic_cast<QGraphicsPolygonItem*>(item);
+                        if (polygonItem)
+                            polygonItem->setPolygon(pointsToPolygon(shape.getPoints()));
+                    }
+                    else
+                    {
+                        auto* rectItem = dynamic_cast<QGraphicsRectItem*>(item);
+                        if (rectItem)
+                        {
+                            const Rect& bounds = shape.getBounds();
+                            QRectF sceneRect(bounds.min.x, bounds.min.y, bounds.width(), bounds.height());
+                            rectItem->setRect(sceneRect);
+                        }
+                    }
+
+                    item->setData(1, QString::fromStdString(layer.getName()));
+                    item->setData(0, sid);
+                    item->setZValue(static_cast<qreal>(layerId));
+                    if (auto* shapeItem = asShapeItem(item))
+                    {
+                        QString lname = shapeItem->data(1).toString();
+                        QColor c = colorForLayerName(lname.toStdString());
+                        QBrush b(c);
+                        shapeItem->setBrush(b);
+                        QPen pen(c.darker(140)); pen.setWidth(1);
+                        shapeItem->setPen(pen);
+                        shapeItem->setOpacity(1.0);
+                    }
                 }
                 else
                 {
-                    // Create new item and store
-                    QGraphicsRectItem* item = addRect(sceneRect);
-                    // store layer name for styling
-                    item->setData(1, QString::fromStdString(layer.getName()));
-                    QColor c = colorForLayerName(QString::fromStdString(layer.getName()).toStdString());
-                    // Slightly vary fill per-shape to reduce exact-overlap color masking
-                    int var = sid % 10; // small variance
-                    QColor fill = c;
-                    int h, s, v; fill.getHsv(&h, &s, &v);
-                    v = std::max(20, std::min(255, v - var));
-                    fill.setHsv(h, s, v);
-                    item->setBrush(QBrush(fill));
-                    QPen pen(fill.darker(140)); pen.setWidth(1);
-                    item->setPen(pen);
-                    item->setAcceptHoverEvents(false);
-                    item->setCacheMode(QGraphicsItem::NoCache);
-                    item->setData(0, sid);
-                    item->setZValue(static_cast<qreal>(layerId));
-                    m_shapeItems[sid] = item;
+                    if (it != m_shapeItems.end() && it->second)
+                    {
+                        removeItem(it->second);
+                        delete it->second;
+                        m_shapeItems.erase(it);
+                    }
+
+                    QColor c = colorForLayerName(layer.getName());
+                    QGraphicsItem* item = createShapeGraphicsItem(this, shape, layer, c);
+                    if (item)
+                    {
+                        item->setAcceptHoverEvents(false);
+                        item->setCacheMode(QGraphicsItem::NoCache);
+                        m_shapeItems[sid] = item;
+                    }
                 }
             }
         }
@@ -123,33 +196,13 @@ void LayoutScene::loadLayout(const std::shared_ptr<Layout>& layout)
     {
         for (const auto& shape : layer.getShapes())
         {
-            const Rect& bounds = shape.getBounds();
-            // Create rectangle using exact layout coordinates (x=min.x, y=min.y, width, height)
-            QRectF sceneRect(bounds.min.x, bounds.min.y, bounds.width(), bounds.height());
-
-            // Create graphics item
-            QGraphicsRectItem* item = addRect(sceneRect);
-
-            // store layer name for styling
-            item->setData(1, QString::fromStdString(layer.getName()));
             QColor c = colorForLayerName(layer.getName());
-            // Vary fill slightly by shape id to avoid perfectly identical overlapping fills
-            int var = shape.getId() % 12;
-            QColor fill = c;
-            int h, s, v; fill.getHsv(&h, &s, &v);
-            v = std::max(18, std::min(255, v - var));
-            fill.setHsv(h, s, v);
-            item->setBrush(QBrush(fill));
-            QPen pen(fill.darker(140)); pen.setWidth(1);
-            item->setPen(pen);
+            QGraphicsItem* item = createShapeGraphicsItem(this, shape, layer, c);
+            if (!item)
+                continue;
 
-            // Enable antialiasing for smoother rendering
             item->setAcceptHoverEvents(false);
             item->setCacheMode(QGraphicsItem::NoCache);
-            item->setZValue(static_cast<qreal>(layerId));
-
-            // Store reference for later updates (keyed by shapeId)
-            // Tag the graphics item with the shape id for selection/lookup
             item->setData(0, shape.getId());
             m_shapeItems[shape.getId()] = item;
         }
@@ -186,31 +239,42 @@ void LayoutScene::highlightShapeIds(const std::vector<int>& shapeIds)
     // Update all items: emphasize hits, dim others
     for (auto& kv : m_shapeItems)
     {
-        QGraphicsRectItem* item = kv.second;
+        QGraphicsItem* item = kv.second;
         if (!item)
             continue;
 
         if (hit.find(kv.first) != hit.end())
         {
-            // Emphasize: add semi-transparent red overlay (so base color remains visible)
             item->setOpacity(1.0);
             if (!m_violationOverlays.contains(kv.first))
             {
-                QGraphicsRectItem* overlay = addRect(item->rect());
-                overlay->setBrush(QBrush(QColor(200, 40, 40, 90)));
-                QPen pen(QColor(200, 30, 30)); pen.setWidth(2);
-                overlay->setPen(pen);
-                overlay->setZValue(item->zValue() + 0.5);
-                overlay->setFlag(QGraphicsItem::ItemIsSelectable, false);
-                overlay->setData(0, kv.first);
-                m_violationOverlays.insert(kv.first, overlay);
+                if (auto* polygonItem = dynamic_cast<QGraphicsPolygonItem*>(item))
+                {
+                    QGraphicsPolygonItem* overlay = addPolygon(polygonItem->polygon());
+                    overlay->setBrush(QBrush(QColor(200, 40, 40, 90)));
+                    QPen pen(QColor(200, 30, 30)); pen.setWidth(2);
+                    overlay->setPen(pen);
+                    overlay->setZValue(item->zValue() + 0.5);
+                    overlay->setFlag(QGraphicsItem::ItemIsSelectable, false);
+                    overlay->setData(0, kv.first);
+                    m_violationOverlays.insert(kv.first, overlay);
+                }
+                else if (auto* rectItem = dynamic_cast<QGraphicsRectItem*>(item))
+                {
+                    QGraphicsRectItem* overlay = addRect(rectItem->rect());
+                    overlay->setBrush(QBrush(QColor(200, 40, 40, 90)));
+                    QPen pen(QColor(200, 30, 30)); pen.setWidth(2);
+                    overlay->setPen(pen);
+                    overlay->setZValue(item->zValue() + 0.5);
+                    overlay->setFlag(QGraphicsItem::ItemIsSelectable, false);
+                    overlay->setData(0, kv.first);
+                    m_violationOverlays.insert(kv.first, overlay);
+                }
             }
         }
         else
         {
-            // Dim non-involved shapes: reduce opacity but keep base color
             item->setOpacity(0.28);
-            // remove overlay if it exists
             if (m_violationOverlays.contains(kv.first))
             {
                 auto* ov = m_violationOverlays.take(kv.first);
@@ -225,25 +289,37 @@ void LayoutScene::resetHighlight()
     // Remove any violation overlays
     for (auto it = m_violationOverlays.begin(); it != m_violationOverlays.end(); ++it)
     {
-        QGraphicsRectItem* ov = it.value();
-        if (ov) { removeItem(ov); delete ov; }
+        if (auto* ov = it.value())
+        {
+            removeItem(ov);
+            delete ov;
+        }
     }
     m_violationOverlays.clear();
 
     // Reset opacity and restore per-layer pen/brush for all shapes
     for (auto& kv : m_shapeItems)
     {
-        QGraphicsRectItem* item = kv.second;
-        if (!item) continue;
+        QGraphicsItem* item = kv.second;
+        if (!item)
+            continue;
+
         item->setOpacity(1.0);
-        QString lname = item->data(1).toString();
-        QColor c = colorForLayerName(lname.toStdString());
-        // try to retain the small per-shape variation
-        int sid = kv.first;
-        int var = sid % 12;
-        QColor fill = c; int h,s,v; fill.getHsv(&h,&s,&v); v = std::max(18, std::min(255, v - var)); fill.setHsv(h,s,v);
-        item->setBrush(QBrush(fill));
-        QPen pen(fill.darker(140)); pen.setWidth(1); item->setPen(pen);
+        if (auto* shapeItem = asShapeItem(item))
+        {
+            QString lname = item->data(1).toString();
+            QColor c = colorForLayerName(lname.toStdString());
+            int sid = kv.first;
+            int var = sid % 12;
+            QColor fill = c;
+            int h, s, v;
+            fill.getHsv(&h, &s, &v);
+            v = std::max(18, std::min(255, v - var));
+            fill.setHsv(h, s, v);
+            shapeItem->setBrush(QBrush(fill));
+            QPen pen(fill.darker(140)); pen.setWidth(1);
+            shapeItem->setPen(pen);
+        }
     }
 }
 
@@ -252,12 +328,6 @@ void LayoutScene::clear()
     QGraphicsScene::clear();
     m_shapeItems.clear();
     m_layout = nullptr;
-    // clear overlays
-    for (auto it = m_violationOverlays.begin(); it != m_violationOverlays.end(); ++it)
-    {
-        QGraphicsRectItem* ov = it.value();
-        if (ov) delete ov;
-    }
     m_violationOverlays.clear();
 }
 
@@ -266,11 +336,10 @@ QRectF LayoutScene::getLayoutBounds() const
     return itemsBoundingRect();
 }
 
-void LayoutScene::applyNormalStyle(QGraphicsRectItem* item)
+void LayoutScene::applyNormalStyle(QAbstractGraphicsShapeItem* item)
 {
     if (!item)
         return;
-    // If a layer name exists, use its color, otherwise fallback
     QString lname = item->data(1).toString();
     QColor c = colorForLayerName(lname.toStdString());
     item->setBrush(QBrush(c));
@@ -281,11 +350,10 @@ void LayoutScene::applyNormalStyle(QGraphicsRectItem* item)
     item->setOpacity(1.0);
 }
 
-void LayoutScene::applyViolationStyle(QGraphicsRectItem* item)
+void LayoutScene::applyViolationStyle(QAbstractGraphicsShapeItem* item)
 {
     if (!item)
         return;
-    // Keep base coloring and rely on overlay; this function left for backward compatibility
     QPen pen(QColor(180, 20, 20));
     pen.setWidth(2);
     item->setPen(pen);

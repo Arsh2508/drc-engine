@@ -33,4 +33,6 @@ private:
     Shape parseShape(const json& shapeJson, int layerId, size_t defaultShapeId);
 
     Rect parseRect(const json& rectJson);
+
+    std::vector<Point> parsePoints(const json& pointsJson);
 };

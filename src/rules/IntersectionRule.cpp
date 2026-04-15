@@ -52,8 +52,29 @@ std::vector<DrcViolation> IntersectionRule::check(const DrcContext& context) con
             // Check for intersection
             if (GeometryUtils::rectsOverlap(bounds1, bounds2))
             {
-                // Strict intersection (not just touching)
-                if (GeometryUtils::rectsStrictlyOverlap(bounds1, bounds2))
+                bool shapesIntersect = false;
+                if (shape1.hasPoints() || shape2.hasPoints())
+                {
+                    // Get points for shape1
+                    std::vector<Point> points1 = shape1.hasPoints() ? shape1.getPoints() :
+                        std::vector<Point>{{bounds1.min.x, bounds1.min.y}, {bounds1.max.x, bounds1.min.y},
+                                          {bounds1.max.x, bounds1.max.y}, {bounds1.min.x, bounds1.max.y}};
+
+                    // Get points for shape2
+                    std::vector<Point> points2 = shape2.hasPoints() ? shape2.getPoints() :
+                        std::vector<Point>{{bounds2.min.x, bounds2.min.y}, {bounds2.max.x, bounds2.min.y},
+                                          {bounds2.max.x, bounds2.max.y}, {bounds2.min.x, bounds2.max.y}};
+
+                    // Use polygon intersection
+                    shapesIntersect = GeometryUtils::polygonsIntersect(points1, points2);
+                }
+                else
+                {
+                    // Use bounding box intersection for rectangles
+                    shapesIntersect = GeometryUtils::rectsStrictlyOverlap(bounds1, bounds2);
+                }
+
+                if (shapesIntersect)
                 {
                     std::string message =
                         "Shapes " + std::to_string(shape1.getId()) +

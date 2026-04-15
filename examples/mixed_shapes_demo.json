@@ -1,0 +1,60 @@
+{
+  "layout_name": "mixed_shapes_demo",
+  "objects": [
+    {
+      "type": "rectangle",
+      "layer": "metal1",
+      "x": 10,
+      "y": 10,
+      "width": 20,
+      "height": 8
+    },
+    {
+      "type": "trapezoid",
+      "layer": "metal1",
+      "points": [
+        {"x": 40, "y": 10},
+        {"x": 60, "y": 10},
+        {"x": 55, "y": 22},
+        {"x": 45, "y": 22}
+      ]
+    },
+    {
+      "type": "rectangle",
+      "layer": "metal1",
+      "x": 70,
+      "y": 10,
+      "width": 15,
+      "height": 12
+    },
+    {
+      "type": "parallelogram",
+      "layer": "metal2",
+      "points": [
+        {"x": 5, "y": 30},
+        {"x": 25, "y": 30},
+        {"x": 35, "y": 45},
+        {"x": 15, "y": 45}
+      ]
+    },
+    {
+      "type": "polygon",
+      "layer": "metal2",
+      "points": [
+        {"x": 50, "y": 35},
+        {"x": 70, "y": 35},
+        {"x": 75, "y": 50},
+        {"x": 65, "y": 60},
+        {"x": 45, "y": 60}
+      ]
+    },
+    {
+      "type": "rectangle",
+      "layer": "metal2",
+      "x": 80,
+      "y": 35,
+      "width": 10,
+      "height": 15
+    }
+  ]
+}

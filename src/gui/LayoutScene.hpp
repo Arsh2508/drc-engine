@@ -2,6 +2,8 @@
 
 #include <QGraphicsScene>
 #include <QGraphicsRectItem>
+#include <QGraphicsPolygonItem>
+#include <QAbstractGraphicsShapeItem>
 #include <unordered_map>
 #include <memory>
 #include <QColor>
@@ -34,16 +36,16 @@ public:
 
 private:
     // Mapping from shapeId to graphics item
-    std::unordered_map<int, QGraphicsRectItem*> m_shapeItems;
+    std::unordered_map<int, QGraphicsItem*> m_shapeItems;
 
     // Currently loaded layout
     std::shared_ptr<Layout> m_layout;
 
-    /// @brief Apply normal style to a shape (light gray, black pen).
-    void applyNormalStyle(QGraphicsRectItem* item);
+    /// @brief Apply normal style to a shape item.
+    void applyNormalStyle(QAbstractGraphicsShapeItem* item);
 
-    /// @brief Apply violation style to a shape (red, red pen with thickness).
-    void applyViolationStyle(QGraphicsRectItem* item);
+    /// @brief Apply violation style to a shape item.
+    void applyViolationStyle(QAbstractGraphicsShapeItem* item);
 
     // Draw custom background (black) with dotted grid
     void drawBackground(QPainter* painter, const QRectF& rect) override;
@@ -52,7 +54,7 @@ private:
     QColor colorForLayerName(const std::string& name) const;
 
     // Overlay items used to highlight violations without replacing base color
-    QHash<int, QGraphicsRectItem*> m_violationOverlays;
+    QHash<int, QGraphicsItem*> m_violationOverlays;
 
     // Map layer name -> color
     QMap<QString, QColor> m_layerColors;

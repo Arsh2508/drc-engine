@@ -1,0 +1,70 @@
+{
+  "layers": {
+    "metal": { "minWidth": 100.0, "minHeight": 100.0, "minArea": 10000.0 },
+    "via": { "minWidth": 50.0, "minHeight": 50.0, "minArea": 2500.0 }
+  },
+
+  "rules": {
+    "enclosure": [
+      { "inner": "via", "outer": "metal", "margin": 20.0 }
+    ]
+  },
+
+  "shapes": [
+    {
+      "id": 1,
+      "layer": "metal",
+      "rect": { "x1": 0, "y1": 0, "x2": 200, "y2": 200 }
+    },
+    {
+      "id": 2,
+      "layer": "via",
+      "rect": { "x1": 50, "y1": 50, "x2": 100, "y2": 100 },
+      "description": "PASS: via fully enclosed by metal with 50 units margin on all sides (50-100 in 0-200)"
+    },
+    {
+      "id": 3,
+      "layer": "metal",
+      "rect": { "x1": 250, "y1": 0, "x2": 450, "y2": 200 }
+    },
+    {
+      "id": 4,
+      "layer": "via",
+      "rect": { "x1": 270, "y1": 50, "x2": 320, "y2": 100 },
+      "description": "FAIL: via enclosed but margin on left is 270-250=20 (OK), right is 450-320=130 (OK), but margin insufficient overall"
+    },
+    {
+      "id": 5,
+      "layer": "metal",
+      "rect": { "x1": 500, "y1": 0, "x2": 700, "y2": 200 }
+    },
+    {
+      "id": 6,
+      "layer": "via",
+      "rect": { "x1": 550, "y1": 50, "x2": 600, "y2": 100 },
+      "description": "PASS: via well enclosed by metal with good margins (50 left, 100 right, 50 top/bottom)"
+    },
+    {
+      "id": 7,
+      "layer": "metal",
+      "rect": { "x1": 750, "y1": 0, "x2": 950, "y2": 200 }
+    },
+    {
+      "id": 8,
+      "layer": "via",
+      "rect": { "x1": 750, "y1": 50, "x2": 800, "y2": 100 },
+      "description": "FAIL: via touches left edge of metal (margin = 0 on left side)"
+    },
+    {
+      "id": 9,
+      "layer": "metal",
+      "rect": { "x1": 1000, "y1": 0, "x2": 1200, "y2": 100 }
+    },
+    {
+      "id": 10,
+      "layer": "via",
+      "rect": { "x1": 1020, "y1": 80, "x2": 1070, "y2": 130 },
+      "description": "FAIL: via extends beyond top edge of metal (not fully contained, max_y=130 > 100)"
+    }
+  ]
+}

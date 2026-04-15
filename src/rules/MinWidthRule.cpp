@@ -1,5 +1,6 @@
 #include <rules/MinWidthRule.hpp>
 
+#include <geometry/GeometryUtils.hpp>
 #include <layout/Layout.hpp>
 
 #include <cmath>
@@ -34,8 +35,20 @@ std::vector<DrcViolation> MinWidthRule::check(const DrcContext& context) const
         {
             // compute width/height using absolute difference to guard against
             // any inverted coordinates (should not happen, but helps debugging)
-            double w = std::abs(static_cast<double>(shape.getBounds().width()));
-            double h = std::abs(static_cast<double>(shape.getBounds().height()));
+            double w, h;
+            if (shape.hasPoints())
+            {
+                // Use polygon min dimensions for non-rectangular shapes
+                auto [minW, minH] = GeometryUtils::polygonMinDimensions(shape.getPoints());
+                w = minW;
+                h = minH;
+            }
+            else
+            {
+                // Use bounding box for rectangles
+                w = std::abs(static_cast<double>(shape.getBounds().width()));
+                h = std::abs(static_cast<double>(shape.getBounds().height()));
+            }
 
             // debug logging for each shape
             std::cout << "[MinWidthRule] shape=" << shape.getId()

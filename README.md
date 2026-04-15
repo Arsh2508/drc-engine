@@ -64,8 +64,8 @@ Run DRC checks on a layout file using the command-line interface:
 mkdir build && cd build
 cmake .. && make
 
-# Run DRC on an example layout
-./bin/cli_drc ../examples/layout_sample.json
+# Run DRC on a layout and a separate rules file
+./bin/cli_drc ../examples/layout_only_example.json --rules ../examples/rules_only_example.json
 ```
 
 Sample output:

@@ -1,10 +1,11 @@
 #include <core/DrcEngine.hpp>
+#include <io/JsonLayoutLoader.hpp>
+#include <io/RulesJsonLoader.hpp>
 #include <rules/MinSpacingRule.hpp>
 #include <rules/IntersectionRule.hpp>
 #include <layout/Layout.hpp>
 #include <layout/Layer.hpp>
 #include <layout/Shape.hpp>
-#include <io/JsonLayoutLoader.hpp>
 #include <iostream>
 #include <iomanip>
 #include <memory>
@@ -64,10 +65,11 @@ Layout createSampleLayout()
 /// Print usage information.
 void printUsage(const char* programName)
 {
-    std::cout << "Usage: " << programName << " [layout.json]\n\n";
-    std::cout << "If layout.json is provided, loads layout from the JSON file.\n";
+    std::cout << "Usage: " << programName << " [layout.json] [--rules rules.json]\n\n";
+    std::cout << "If a layout JSON file is provided, loads layout from that file.\n";
+    std::cout << "If --rules is provided, loads rules from the separate rules JSON file.\n";
     std::cout << "Otherwise, runs demo with a sample hardcoded layout.\n\n";
-    std::cout << "JSON Format:\n";
+    std::cout << "Layout JSON Format:\n";
     std::cout << "{\n";
     std::cout << "  \"layers\": [\n";
     std::cout << "    {\n";
@@ -81,6 +83,16 @@ void printUsage(const char* programName)
     std::cout << "      ]\n";
     std::cout << "    }\n";
     std::cout << "  ]\n";
+    std::cout << "}\n\n";
+    std::cout << "Rules JSON Format:\n";
+    std::cout << "{\n";
+    std::cout << "  \"intersection\": true,\n";
+    std::cout << "  \"minSpacing\": [\n";
+    std::cout << "    { \"layer\": \"metal1\", \"minDist\": 10.0 }\n";
+    std::cout << "  ],\n";
+    std::cout << "  \"layers\": {\n";
+    std::cout << "    \"metal1\": { \"minWidth\": 1000.0, \"minArea\": 100000.0 }\n";
+    std::cout << "  }\n";
     std::cout << "}\n";
 }
 
@@ -95,34 +107,81 @@ int main(int argc, char* argv[])
 
         // Step 1: Load or create layout
         std::shared_ptr<Layout> layout;
+        std::vector<DrcRulePtr> parsedRules;
         // Create DRC Engine (rules will be registered below)
         auto engine = std::make_shared<DrcEngine>();
 
-        if (argc > 1)
+        std::string layoutFilename;
+        std::string rulesFilename;
+        for (int i = 1; i < argc; ++i)
         {
-            // Load from JSON file
-            std::string filename = argv[1];
-            std::cout << "Loading layout from file: " << filename << "\n";
-            
+            if (std::strcmp(argv[i], "--rules") == 0)
+            {
+                if (i + 1 >= argc)
+                {
+                    std::cerr << "Missing argument for --rules\n";
+                    printUsage(argv[0]);
+                    return 1;
+                }
+                rulesFilename = argv[++i];
+                continue;
+            }
+
+            if (std::strcmp(argv[i], "--help") == 0 || std::strcmp(argv[i], "-h") == 0)
+            {
+                printUsage(argv[0]);
+                return 0;
+            }
+
+            if (layoutFilename.empty())
+            {
+                layoutFilename = argv[i];
+            }
+            else
+            {
+                std::cerr << "Unexpected argument: " << argv[i] << "\n";
+                printUsage(argv[0]);
+                return 1;
+            }
+        }
+
+        if (!layoutFilename.empty())
+        {
             JsonLayoutLoader loader;
-            std::cout << "Loader: " << loader.getDescription() << "\n";
+            RulesJsonLoader ruleLoader;
+            std::cout << "Loading layout from file: " << layoutFilename << "\n";
+            std::cout << "Layout Loader: " << loader.getDescription() << "\n";
 
             try
             {
-                auto pair = loader.loadWithRules(filename);
-                layout = pair.first;
-                // Register rules produced by loader
-                std::cout << "Registering rules from JSON...\n";
-                for (const auto& r : pair.second)
+                layout = loader.load(layoutFilename);
+                if (!rulesFilename.empty())
                 {
-                    engine->registerRule(r);
-                    std::cout << "  Added rule: " << r->getDescription() << "\n";
+                    std::cout << "Loading rules from file: " << rulesFilename << "\n";
+                    parsedRules = ruleLoader.load(rulesFilename, layout);
                 }
+                else
+                {
+                    auto pair = loader.loadWithRules(layoutFilename);
+                    layout = pair.first;
+                    parsedRules = pair.second;
+                }
+
+                if (!parsedRules.empty())
+                {
+                    std::cout << "Registering rules from JSON...\n";
+                    for (const auto& r : parsedRules)
+                    {
+                        engine->registerRule(r);
+                        std::cout << "  Added rule: " << r->getDescription() << "\n";
+                    }
+                }
+
                 std::cout << "Layout loaded successfully.\n";
             }
             catch (const std::exception& e)
             {
-                std::cerr << "Error loading layout: " << e.what() << "\n";
+                std::cerr << "Error loading layout or rules: " << e.what() << "\n";
                 printUsage(argv[0]);
                 return 1;
             }

@@ -1,0 +1,23 @@
+{
+  "intersection": true,
+  "minSpacing": [
+    { "layer": "metal1", "minDist": 10.0 },
+    { "layer": "metal2", "minDist": 5.0 }
+  ],
+  "enclosure": [
+    { "inner": "metal1", "outer": "metal2", "margin": 2.0 }
+  ],
+  "containment": [
+    { "layerA": "metal1", "layerB": "metal2" }
+  ],
+  "layers": {
+    "metal1": {
+      "minWidth": 8.0,
+      "minArea": 64.0
+    },
+    "metal2": {
+      "minWidth": 5.0,
+      "minArea": 25.0
+    }
+  }
+}

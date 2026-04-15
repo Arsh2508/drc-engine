@@ -1,0 +1,31 @@
+{
+  "layers": [
+    {
+      "name": "metal1",
+      "id": 0,
+      "shapes": [
+        {
+          "id": 1,
+          "type": "rectangle",
+          "rect": { "x1": 0, "y1": 0, "x2": 20, "y2": 10 }
+        },
+        {
+          "id": 2,
+          "type": "rectangle",
+          "rect": { "x1": 30, "y1": 0, "x2": 50, "y2": 10 }
+        }
+      ]
+    },
+    {
+      "name": "metal2",
+      "id": 1,
+      "shapes": [
+        {
+          "id": 3,
+          "type": "rectangle",
+          "rect": { "x1": 5, "y1": 15, "x2": 25, "y2": 25 }
+        }
+      ]
+    }
+  ]
+}

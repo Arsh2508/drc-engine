@@ -1,11 +1,5 @@
 #include <io/JsonLayoutLoader.hpp>
-
-#include <rules/ContainmentRule.hpp>
-#include <rules/EnclosureRule.hpp>
-#include <rules/IntersectionRule.hpp>
-#include <rules/MinAreaRule.hpp>
-#include <rules/MinSpacingRule.hpp>
-#include <rules/MinWidthRule.hpp>
+#include <io/RulesJsonLoader.hpp>
 
 #include <fstream>
 #include <memory>
@@ -37,62 +31,107 @@ std::shared_ptr<Layout> JsonLayoutLoader::load(const std::string& filename)
     file.close();
 
     // Validate top-level structure
-    if (!layoutJson.contains("layers"))
+    if (!layoutJson.contains("layers") && !layoutJson.contains("objects"))
     {
-        throw std::runtime_error("JSON missing required 'layers' field");
+        throw std::runtime_error("JSON missing required 'layers' or 'objects' field");
     }
 
     auto layout = std::make_shared<Layout>();
 
-    // Parse layers
-    // Backwards-compatible parsing: if "layers" is an array (old format)
-    if (layoutJson["layers"].is_array())
+    // Parse objects format (new format)
+    if (layoutJson.contains("objects"))
     {
-        for (size_t layerIdx = 0; layerIdx < layoutJson["layers"].size(); ++layerIdx)
+        if (!layoutJson["objects"].is_array())
         {
-            const auto& layerJson = layoutJson["layers"][layerIdx];
-            parseLayer(layerJson, *layout, static_cast<int>(layerIdx));
+            throw std::runtime_error("'objects' field must be an array");
         }
-    }
-    else if (layoutJson["layers"].is_object())
-    {
-        // New format: object mapping layer name -> properties (minWidth, shapes omitted)
-        int nextId = 0;
-        for (auto it = layoutJson["layers"].begin(); it != layoutJson["layers"].end(); ++it)
+
+        std::map<std::string, std::vector<Shape>> layerShapes;
+        int nextShapeId = 0;
+
+        for (const auto& objJson : layoutJson["objects"])
         {
-            const std::string layerName = it.key();
-            const auto& props = it.value();
-
-            Layer layer(nextId, layerName);
-
-            // If shapes are provided inside this object, parse them
-            if (props.contains("shapes") && props["shapes"].is_array())
+            if (!objJson.contains("type") || !objJson.contains("layer"))
             {
-                for (size_t si = 0; si < props["shapes"].size(); ++si)
-                {
-                    Shape s = parseShape(props["shapes"][si], nextId, si);
-                    layer.addShape(s);
-                }
+                throw std::runtime_error("Object missing required 'type' or 'layer' field");
             }
 
-            // Parse per-layer rule config if present
-            Layout::LayerRuleConfig cfg;
-            if (props.contains("minWidth"))
-                cfg.minWidth = props["minWidth"].get<double>();
-            if (props.contains("minHeight"))
-                cfg.minHeight = props["minHeight"].get<double>();
-            if (props.contains("minArea"))
-                cfg.minArea = props["minArea"].get<double>();
+            std::string layerName = objJson["layer"];
+            Shape shape = parseShape(objJson, 0, nextShapeId++);
+            layerShapes[layerName].push_back(shape);
+        }
 
+        // Create layers
+        int layerId = 0;
+        for (const auto& [layerName, shapes] : layerShapes)
+        {
+            Layer layer(layerId++, layerName);
+            for (const auto& shape : shapes)
+            {
+                layer.addShape(shape);
+            }
             layout->addLayer(layer);
-            layout->setLayerRuleConfig(layerName, cfg);
 
-            ++nextId;
+            // Set default layer rule config for objects format
+            Layout::LayerRuleConfig cfg;
+            cfg.minWidth = 5.0;   // Default minimum width
+            cfg.minHeight = 5.0;  // Default minimum height
+            cfg.minArea = 25.0;   // Default minimum area (5x5)
+            layout->setLayerRuleConfig(layerName, cfg);
         }
     }
-    else
+    // Parse layers format (existing format)
+    else if (layoutJson.contains("layers"))
     {
-        throw std::runtime_error("Unsupported 'layers' format in JSON");
+        // Backwards-compatible parsing: if "layers" is an array (old format)
+        if (layoutJson["layers"].is_array())
+        {
+            for (size_t layerIdx = 0; layerIdx < layoutJson["layers"].size(); ++layerIdx)
+            {
+                const auto& layerJson = layoutJson["layers"][layerIdx];
+                parseLayer(layerJson, *layout, static_cast<int>(layerIdx));
+            }
+        }
+        else if (layoutJson["layers"].is_object())
+        {
+            // New format: object mapping layer name -> properties (minWidth, shapes omitted)
+            int nextId = 0;
+            for (auto it = layoutJson["layers"].begin(); it != layoutJson["layers"].end(); ++it)
+            {
+                const std::string layerName = it.key();
+                const auto& props = it.value();
+
+                Layer layer(nextId, layerName);
+
+                // If shapes are provided inside this object, parse them
+                if (props.contains("shapes") && props["shapes"].is_array())
+                {
+                    for (size_t si = 0; si < props["shapes"].size(); ++si)
+                    {
+                        Shape s = parseShape(props["shapes"][si], nextId, si);
+                        layer.addShape(s);
+                    }
+                }
+
+                // Parse per-layer rule config if present
+                Layout::LayerRuleConfig cfg;
+                if (props.contains("minWidth"))
+                    cfg.minWidth = props["minWidth"].get<double>();
+                if (props.contains("minHeight"))
+                    cfg.minHeight = props["minHeight"].get<double>();
+                if (props.contains("minArea"))
+                    cfg.minArea = props["minArea"].get<double>();
+
+                layout->addLayer(layer);
+                layout->setLayerRuleConfig(layerName, cfg);
+
+                ++nextId;
+            }
+        }
+        else
+        {
+            throw std::runtime_error("Unsupported 'layers' format in JSON");
+        }
     }
 
     return layout;
@@ -101,160 +140,9 @@ std::shared_ptr<Layout> JsonLayoutLoader::load(const std::string& filename)
 std::pair<std::shared_ptr<Layout>, std::vector<DrcRulePtr>>
 JsonLayoutLoader::loadWithRules(const std::string& filename)
 {
-    // Read file and parse JSON first (reuse existing load error checks)
-    std::ifstream file(filename);
-    if (!file.is_open())
-    {
-        throw std::runtime_error("Could not open file: " + filename);
-    }
-
-    json layoutJson;
-    try
-    {
-        file >> layoutJson;
-    }
-    catch (const json::exception& e)
-    {
-        throw std::runtime_error(std::string("Failed to parse JSON: ") + e.what());
-    }
-    file.close();
-
-    auto layout = std::make_shared<Layout>();
-    std::vector<DrcRulePtr> rules;
-
-    // Parse layers (reuse logic from load)
-    if (!layoutJson.contains("layers"))
-        throw std::runtime_error("JSON missing required 'layers' field");
-
-    if (layoutJson["layers"].is_array())
-    {
-        for (size_t layerIdx = 0; layerIdx < layoutJson["layers"].size(); ++layerIdx)
-        {
-            const auto& layerJson = layoutJson["layers"][layerIdx];
-            parseLayer(layerJson, *layout, static_cast<int>(layerIdx));
-        }
-    }
-    else if (layoutJson["layers"].is_object())
-    {
-        int nextId = 0;
-        for (auto it = layoutJson["layers"].begin(); it != layoutJson["layers"].end(); ++it)
-        {
-            const std::string layerName = it.key();
-            const auto& props = it.value();
-
-            Layer layer(nextId, layerName);
-
-            if (props.contains("shapes") && props["shapes"].is_array())
-            {
-                for (size_t si = 0; si < props["shapes"].size(); ++si)
-                {
-                    Shape s = parseShape(props["shapes"][si], nextId, si);
-                    layer.addShape(s);
-                }
-            }
-
-            Layout::LayerRuleConfig cfg;
-            if (props.contains("minWidth"))
-                cfg.minWidth = props["minWidth"].get<double>();
-            if (props.contains("minHeight"))
-                cfg.minHeight = props["minHeight"].get<double>();
-            if (props.contains("minArea"))
-                cfg.minArea = props["minArea"].get<double>();
-
-            layout->addLayer(layer);
-            layout->setLayerRuleConfig(layerName, cfg);
-
-            ++nextId;
-        }
-    }
-    else
-    {
-        throw std::runtime_error("Unsupported 'layers' format in JSON");
-    }
-
-    // If top-level shapes array exists (alternate format), parse shapes into layers by name
-    if (layoutJson.contains("shapes") && layoutJson["shapes"].is_array())
-    {
-        for (const auto& sj : layoutJson["shapes"])
-        {
-            // Expected: id, layer (name), x1,y1,x2,y2
-            if (!sj.contains("layer") || !sj.contains("rect"))
-                continue;
-            std::string lname = sj["layer"].get<std::string>();
-            auto lid = layout->getLayerIdByName(lname);
-            if (lid < 0)
-                continue;
-            Shape s = parseShape(sj, lid, 0);
-            Layer* layerPtr = layout->getLayer(lid);
-            if (layerPtr)
-                layerPtr->addShape(s);
-        }
-    }
-
-    // Parse rules object if present
-    if (layoutJson.contains("rules") && layoutJson["rules"].is_object())
-    {
-        const auto& rulesJson = layoutJson["rules"];
-
-        // Intersection rules (boolean flag or empty array indicates desire)
-        if (rulesJson.contains("intersection"))
-        {
-            // if empty array or object, still register default IntersectionRule
-            if (rulesJson["intersection"].is_array() && !rulesJson["intersection"].empty())
-            {
-                // future: parse parameters per-layer
-            }
-            rules.push_back(std::make_shared<IntersectionRule>());
-        }
-
-        // Min-spacing rules
-        if (rulesJson.contains("minSpacing") && rulesJson["minSpacing"].is_array())
-        {
-            for (const auto& ms : rulesJson["minSpacing"])
-            {
-                if (!ms.contains("layer") || !ms.contains("minDist"))
-                    continue;
-                std::string lname = ms["layer"].get<std::string>();
-                double minDist = ms["minDist"].get<double>();
-                int lid = layout->getLayerIdByName(lname);
-                if (lid >= 0)
-                {
-                    rules.push_back(std::make_shared<MinSpacingRule>(minDist, lid));
-                }
-            }
-        }
-
-        // Enclosure rules
-        if (rulesJson.contains("enclosure") && rulesJson["enclosure"].is_array())
-        {
-            for (const auto& ej : rulesJson["enclosure"])
-            {
-                std::string inner = ej["inner"].get<std::string>();
-                std::string outer = ej["outer"].get<std::string>();
-                double margin = ej.contains("margin") ? ej["margin"].get<double>() : 0.0;
-                rules.push_back(std::make_shared<EnclosureRule>(inner, outer, margin));
-            }
-        }
-
-        // Containment rules
-        if (rulesJson.contains("containment") && rulesJson["containment"].is_array())
-        {
-            for (const auto& cj : rulesJson["containment"])
-            {
-                std::string a = cj["layerA"].get<std::string>();
-                std::string b = cj["layerB"].get<std::string>();
-                rules.push_back(std::make_shared<ContainmentRule>(a, b));
-            }
-        }
-    }
-
-    // Always add min-size/area rules if any layer configs exist
-    if (!layout->getLayers().empty())
-    {
-        rules.push_back(std::make_shared<MinWidthRule>());
-        rules.push_back(std::make_shared<MinAreaRule>());
-    }
-
+    auto layout = load(filename);
+    RulesJsonLoader rulesLoader;
+    auto rules = rulesLoader.load(filename, layout);
     return {layout, rules};
 }
 
@@ -351,16 +239,95 @@ Shape JsonLayoutLoader::parseShape(const json& shapeJson,
         shapeId = shapeJson["id"];
     }
 
-    // Parse rectangle
-    if (!shapeJson.contains("rect"))
+    std::string shapeType = "rectangle";
+    if (shapeJson.contains("type"))
     {
-        throw std::runtime_error(
-            "Shape " + std::to_string(shapeId) + " missing required 'rect' field");
+        if (!shapeJson["type"].is_string())
+        {
+            throw std::runtime_error("Shape 'type' must be a string");
+        }
+        shapeType = shapeJson["type"].get<std::string>();
     }
 
-    Rect rect = parseRect(shapeJson["rect"]);
+    if (shapeType == "rectangle")
+    {
+        if (shapeJson.contains("rect"))
+        {
+            Rect rect = parseRect(shapeJson["rect"]);
+            return Shape(rect, shapeId, layerId);
+        }
+        else if (shapeJson.contains("x") && shapeJson.contains("y") &&
+                 shapeJson.contains("width") && shapeJson.contains("height"))
+        {
+            int x = shapeJson["x"];
+            int y = shapeJson["y"];
+            int width = shapeJson["width"];
+            int height = shapeJson["height"];
+            Rect rect(x, y, x + width, y + height);
+            return Shape(rect, shapeId, layerId);
+        }
+        else
+        {
+            throw std::runtime_error(
+                "Rectangle shape " + std::to_string(shapeId) + " missing required 'rect' or 'x','y','width','height' fields");
+        }
+    }
 
-    return Shape(rect, shapeId, layerId);
+    if (!shapeJson.contains("points"))
+    {
+        throw std::runtime_error(
+            "Shape " + std::to_string(shapeId) + " of type '" + shapeType + "' missing required 'points' field");
+    }
+
+    std::vector<Point> points = parsePoints(shapeJson["points"]);
+    if (shapeType == "trapezoid")
+    {
+        return Shape(Trapezoid(points), shapeId, layerId);
+    }
+    else if (shapeType == "parallelogram")
+    {
+        return Shape(Parallelogram(points), shapeId, layerId);
+    }
+    else if (shapeType == "polygon")
+    {
+        return Shape(Polygon(points, ShapeType::Polygon), shapeId, layerId);
+    }
+    else
+    {
+        throw std::runtime_error(
+            "Unsupported shape type: '" + shapeType + "' for shape " + std::to_string(shapeId));
+    }
+}
+
+std::vector<Point> JsonLayoutLoader::parsePoints(const json& pointsJson)
+{
+    if (!pointsJson.is_array() || pointsJson.empty())
+    {
+        throw std::runtime_error("Shape 'points' must be a non-empty array");
+    }
+
+    std::vector<Point> points;
+    points.reserve(pointsJson.size());
+
+    for (size_t i = 0; i < pointsJson.size(); ++i)
+    {
+        const auto& pointJson = pointsJson[i];
+        if (!pointJson.is_object())
+        {
+            throw std::runtime_error("Each point must be an object with 'x' and 'y'");
+        }
+        if (!pointJson.contains("x") || !pointJson.contains("y"))
+        {
+            throw std::runtime_error("Point must contain both 'x' and 'y'");
+        }
+        if (!pointJson["x"].is_number_integer() || !pointJson["y"].is_number_integer())
+        {
+            throw std::runtime_error("Point coordinates must be integers");
+        }
+        points.emplace_back(pointJson["x"].get<int>(), pointJson["y"].get<int>());
+    }
+
+    return points;
 }
 
 Rect JsonLayoutLoader::parseRect(const json& rectJson)

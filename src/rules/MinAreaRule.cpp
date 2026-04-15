@@ -29,7 +29,7 @@ std::vector<DrcViolation> MinAreaRule::check(const DrcContext& context) const
 
         for (const auto& shape : layer.getShapes())
         {
-            double area = static_cast<double>(shape.getBounds().area());
+            double area = static_cast<double>(shape.getArea());
             if (area + 1e-9 < minArea)
             {
                 std::string msg = "Area too small: " +
